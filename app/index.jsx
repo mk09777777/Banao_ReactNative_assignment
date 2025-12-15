@@ -10,6 +10,7 @@ import {
   Dimensions,
   TouchableOpacity,
   Modal,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -22,6 +23,7 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     loadPhotos();
@@ -44,9 +46,14 @@ export default function Home() {
 
   const fetchPhotos = async (pageNum = 1, append = false) => {
     try {
+      if (pageNum > 1) setLoadingMore(true);
+      
       const response = await fetch(
         `https://api.flickr.com/services/rest/?method=flickr.photos.getRecent&per_page=20&page=${pageNum}&api_key=6f102c62f41998d151e5a1b48713cf13&format=json&nojsoncallback=1&extras=url_s`
       );
+      
+      if (!response.ok) throw new Error('Network error');
+      
       const data = await response.json();
       
       if (data.photos?.photo) {
@@ -67,17 +74,39 @@ export default function Home() {
       
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     } catch (error) {
-      console.error('Error:', error);
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
+      
+      Alert.alert(
+        'Network Error',
+        'Failed to load photos. Please try again.',
+        [
+          {text: 'RETRY', onPress: () => fetchPhotos(pageNum, append)},
+          {text: 'Cancel', style: 'cancel'}
+        ]
+      );
     }
   };
 
   const loadMore = () => {
-    const nextPage = page + 1;
-    setPage(nextPage);
-    fetchPhotos(nextPage, true);
+    if (!loadingMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchPhotos(nextPage, true);
+    }
+  };
+
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return (
+      <View style={styles.footer}>
+        <ActivityIndicator size="small" color="#0066cc" />
+        <Text style={styles.footerText}>Loading more...</Text>
+      </View>
+    );
   };
 
   const renderPhoto = ({item}) => (
@@ -111,6 +140,7 @@ export default function Home() {
         contentContainerStyle={styles.grid}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => {
             setRefreshing(true);
@@ -169,5 +199,13 @@ const styles = StyleSheet.create({
     width: width - 40,
     height: width - 40,
     resizeMode: 'contain',
+  },
+  footer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  footerText: {
+    marginTop: 5,
+    color: '#666',
   },
 });

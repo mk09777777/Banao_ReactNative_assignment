@@ -19,10 +19,10 @@ export default function RootLayout() {
           }}
         />
         <Drawer.Screen
-          name="gallery"
+          name="search"
           options={{
-            drawerLabel: 'Gallery',
-            title: 'Gallery',
+            drawerLabel: 'Search',
+            title: 'Search Photos',
           }}
         />
         <Drawer.Screen
